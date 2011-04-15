@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?><!DOCTYPE phrases SYSTEM "entities.dtd">
+  <epp:phrases xmlns="http://www.w3.org/1999/xhtml" xmlns:epp="http://eprints.org/ep3/phrase" xmlns:epc="http://eprints.org/ep3/control">
+    <epp:phrase id="Plugin/Screen/User/ERISEmailReminders:title">Email Reminder Settings</epp:phrase>
+    <epp:phrase id="Plugin/Screen/User/ERISEmailReminders:description">Change email reminder settings.</epp:phrase>
+    <epp:phrase id="Plugin/Screen/User/ERISEmailReminders:summary">Email reminder settings have been updated.</epp:phrase>
+    <epp:phrase id="Plugin/Screen/User/ERISEmailReminders:email_enable">Choose whether to receive email reminders: </epp:phrase>
+    <epp:phrase id="Plugin/Screen/User/ERISEmailReminders:fulltext_enable">Choose whether to receive full-text reminders: </epp:phrase>
+    <epp:phrase id="Plugin/Screen/User/ERISEmailReminders:stats_enable">Choose whether to receive statistics reminders: </epp:phrase>
+    <epp:phrase id="Plugin/Screen/User/ERISEmailReminders:frequency">Choose frequency of email reminders: </epp:phrase>
+    <epp:phrase id="Plugin/Screen/User/ERISEmailReminders:email_address">Email Address: </epp:phrase>
+    <epp:phrase id="Plugin/Screen/User/ERISEmailReminders:action:emailremindersettings:title">Save</epp:phrase>
+    <epp:phrase id="Plugin/Screen/User/ERISEmailReminders:action:cancel:title">Cancel</epp:phrase>
+    <epp:phrase id="ERISEMailReminders:content-title">Email Reminders: </epp:phrase>
+    <epp:phrase id="ERISEMailReminders:content-header">This email is your scheduled email reminders from: </epp:phrase>
+    <epp:phrase id="ERISEMailReminders:content-footer">Thanks for keeping up-to-date with your EPrints.</epp:phrase>
+    <epp:phrase id="ERISEMailReminders:fulltext-header">Full-text Reminders: </epp:phrase>
+    <epp:phrase id="ERISEMailReminders:fulltext-footer">Please click on any of the above links to upload a full-text attachment.</epp:phrase>
+    <epp:phrase id="ERISEMailReminders:fulltext-none">All your EPrints have full-text attached.</epp:phrase>
+    <epp:phrase id="ERISEMailReminders:fulltext-disabled">You do not have full-text reminders enabled.</epp:phrase>
+    <epp:phrase id="ERISEMailReminders:stats-header">Statistics: </epp:phrase>
+    <epp:phrase id="ERISEMailReminders:stats-table-column-1">Title: </epp:phrase>
+    <epp:phrase id="ERISEMailReminders:stats-table-column-2">Views: </epp:phrase>
+    <epp:phrase id="ERISEMailReminders:stats-footer">You can click on any of the links above to view the item.</epp:phrase>
+    <epp:phrase id="ERISEMailReminders:stats-none">You do not have any statistics available.</epp:phrase>
+    <epp:phrase id="ERISEMailReminders:stats-disabled">You do not have statistics reminders enabled.</epp:phrase>
+  </epp:phrases>

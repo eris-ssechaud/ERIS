@@ -1,0 +1,290 @@
+#!/usr/bin/perl -w -I/usr/share/eprints3/perl_lib
+################################################################################
+#  EPrints Email Reminders Script
+################################################################################
+#  This software was developed as part of the ERIS: Enhancing Repository
+#  Infrastructure in Scotland project. This project was funded by JISC as part
+#  of the Inf11 programme. This software is dependant on the EPrints
+#  Repository software.
+#  Author: Stephane Sechaud
+#  Email: ssechaud1982@gmail.com
+#  For more information please see the links below:
+#  JISC Programme details - http://www.jisc.ac.uk/whatwedo/programmes/inf11.aspx
+#  ERIS Blog site: http://eriscotland.wordpress.com/
+#  EPrints site: http://www.eprints.org/
+################################################################################
+#  This software is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version. Financial profit derived from this
+#  software is strictly prohibited.
+#  This software is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#  GNU General Public License for more details.
+#  You should have received a copy of the GNU General Public License
+#  along with EPrints; if not, Google it, or write to the Free Software
+#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+################################################################################
+
+=pod
+=head1 NAME
+B<email_reminders> - EPrints Email Reminders Script
+=head 1 SYNOPSIS
+B<email_reminders> I<repository_id>
+=head1 DESCRIPTION
+This script checks the email reminder settings for date_last_sent and frequency.
+If the date_last_sent and frequency values are beyond the current date.
+Then an email reminder will be generated and sent out.
+=head1 ARGUMENTS
+=over 8
+B<repository_id>
+The ID of the eprint repository to use.
+=back
+=cut
+
+use EPrints;
+use strict;
+use warnings;
+use Getopt::Long;
+use Pod::Usage;
+
+my $version = 0;
+my $verbose = 0;
+my $quiet = 0;
+my $help = 0;
+my $man = 0;
+
+Getopt::Long::Configure("permute");
+
+GetOptions( 
+	'help|?' => \$help,
+	'man' => \$man,
+	'version' => \$version,
+	'verbose+' => \$verbose,
+	'silent' => \$quiet,
+	'quiet' => \$quiet
+) || pod2usage( 2 );
+EPrints::Utils::cmd_version( "email_reminders" ) if $version;
+pod2usage( 1 ) if $help;
+pod2usage( -exitstatus => 0, -verbose => 2 ) if $man;
+pod2usage( 2 ) if( scalar @ARGV != 1 && scalar @ARGV != 2 ); 
+
+our $noise = 1;
+$noise = 0 if( $quiet );
+$noise = 1+$verbose if( $verbose );
+
+# Set STDOUT to auto flush (without needing a \n)
+$|=1;
+
+my $eris_session = new EPrints::Session( 1 , $ARGV[0] , $noise );
+exit( 1 ) unless( defined $eris_session );
+
+my $repo_url = $eris_session->get_repository->get_conf( "base_url" );
+
+print "## Retrieving email reminder settings for all users.\n";
+my $sql = "SELECT * FROM user_email_reminders WHERE enable = 1";
+my $sth = $eris_session->get_database->prepare_select($sql);
+$eris_session->get_database->execute($sth,$sql);
+my @value;
+while (@value = $sth->fetchrow_array) {
+    if ( @value ) {
+        my $eris_userid = $value[0];
+        my $eris_user_email = $value[2];
+        my $eris_frequency = $value[3];
+        my $eris_date_last_sent = $value[4];
+        my $eris_full_text = $value[5];
+        my $eris_stats = $value[6];
+        my $eris_current_date = eris_get_date();
+        if(eris_date_check($eris_date_last_sent, $eris_current_date, $eris_frequency) > 0){
+            print "Retrieving data for user $eris_userid.\n";
+            my $html = $eris_session->make_doc_fragment;
+            my $email_div = $eris_session->make_element("div",class=>"email_box");
+            my $h1 = $eris_session->make_element("h1");
+            $h1->appendChild($eris_session->html_phrase("ERISEMailReminders:content-title"));
+            $email_div->appendChild($h1);
+            my $para = $eris_session->make_element("p");
+            $para->appendChild($eris_session->html_phrase("ERISEMailReminders:content-header"));
+            my $link = $eris_session->make_element("a", href=>"$repo_url");
+            $link->appendChild($eris_session->html_phrase("archive_name"));
+            $para->appendChild($link);
+            $email_div->appendChild($para);
+            if ($eris_full_text > 0) {
+                my @no_full_text_eprints;
+                @no_full_text_eprints = eris_get_fulltext_eprints($eris_session,$eris_userid);
+                if (@no_full_text_eprints) {
+                    my $h2 = $eris_session->make_element("h2");
+                    $h2->appendChild($eris_session->html_phrase("ERISEMailReminders:fulltext-header"));
+                    $email_div->appendChild($h2);
+                    my $ul = $eris_session->make_element("ul");
+                    my @fulltext;
+                    foreach my $fulltext (@no_full_text_eprints){
+                        my $li = $eris_session->make_element("li");
+                        my $link = $eris_session->make_element("a", href=>"$repo_url/cgi/users/home?eprintid=$fulltext[0]&screen=EPrint::Edit&stage=files#documents");
+                        $link->appendChild($eris_session->make_text($fulltext[1]));
+                        $li->appendChild($link);
+                        $ul->appendChild($li);
+                    }
+                    $email_div->appendChild($ul);
+                    my $para = $eris_session->make_element("p");
+                    $para->appendChild($eris_session->html_phrase("ERISEMailReminders:fulltext-footer"));
+                    $email_div->appendChild($para);
+                }else{
+                    my $h2 = $eris_session->make_element("h2");
+                    $h2->appendChild($eris_session->html_phrase("ERISEMailReminders:fulltext-header"));
+                    $email_div->appendChild($h2);
+                    my $para = $eris_session->make_element("p");
+                    $para->appendChild($eris_session->html_phrase("ERISEMailReminders:fulltext-none"));
+                    $email_div->appendChild($para);
+                };
+            }else{
+                my $h2 = $eris_session->make_element("h2");
+                $h2->appendChild($eris_session->html_phrase("ERISEMailReminders:fulltext-header"));
+                $email_div->appendChild($h2);
+                my $para = $eris_session->make_element("p");
+                $para->appendChild($eris_session->html_phrase("ERISEMailReminders:fulltext-disabled"));
+                $email_div->appendChild($para);
+            };
+            if ($eris_stats > 0) {
+                my @stats;
+                @stats = eris_get_stats($eris_session,$eris_userid);
+                if (@stats) {
+                    my $h2 = $eris_session->make_element("h2");
+                    $h2->appendChild($eris_session->html_phrase("ERISEMailReminders:stats-header"));
+                    $email_div->appendChild($h2);
+                    my $table = $eris_session->make_element("table",border=>"1", bordercolor=>"#000000", style=>"background-color:#FFFFFF", width=>"400", cellpadding=>"3", cellspacing=>"3");
+                    my $table_row = $eris_session->make_element("tr");
+                    my $table_column1 = $eris_session->make_element("td");
+                    $table_column1->appendChild($eris_session->html_phrase("ERISEMailReminders:stats-table-column-1"));
+                    $table_row->appendChild($table_column1);
+                    my $table_column2 = $eris_session->make_element("td");
+                    $table_column2->appendChild($eris_session->html_phrase("ERISEMailReminders:stats-table-column-2"));
+                    $table_row->appendChild($table_column2);
+                    $table->appendChild($table_row);
+                    my @stat;
+                    foreach my $stat (@stats){
+                        my $table_row = $eris_session->make_element("tr");
+                        my $table_column1 = $eris_session->make_element("td");
+                        my $link = $eris_session->make_element("a", href=>"$repo_url/$stat[0]");
+                        $link->appendChild($eris_session->make_text($stat[1]));
+                        $table_column1->appendChild($link);
+                        $table_row->appendChild($table_column1);
+                        my $table_column2 = $eris_session->make_element("td");
+                        $table_column2->appendChild($eris_session->make_text($stat[2]));
+                        $table_row->appendChild($table_column2);
+                        $table->appendChild($table_row);
+                    };
+                    $email_div->appendChild($table);
+                }else{
+                    my $h2 = $eris_session->make_element("h2");
+                    $h2->appendChild($eris_session->html_phrase("ERISEMailReminders:stats-header"));
+                    $email_div->appendChild($h2);
+                    my $para = $eris_session->make_element("p");
+                    $para->appendChild($eris_session->html_phrase("ERISEMailReminders:stats-none"));
+                    $email_div->appendChild($para);
+                };
+            }else{
+                my $h2 = $eris_session->make_element("h2");
+                $h2->appendChild($eris_session->html_phrase("ERISEMailReminders:stats-header"));
+                $email_div->appendChild($h2);
+                my $para = $eris_session->make_element("p");
+                $para->appendChild($eris_session->html_phrase("ERISEMailReminders:stats-disabled"));
+                $email_div->appendChild($para);
+            };
+            # EMail content footer.
+            my $para2 = $eris_session->make_element("p");
+            $para2->appendChild($eris_session->html_phrase("ERISEMailReminders:content-footer"));
+            $email_div->appendChild($para2);
+            $html->appendChild($email_div);
+            # Send the email.
+            my $eris_success = eris_send_email($eris_user_email, $html);
+            if ($eris_success eq 1) {
+                print "Email reminders sent for user $eris_userid.\n"; 
+                my $eris_update = eris_update_date_last_sent($eris_session, $eris_userid, $eris_current_date);
+                print "Date last sent updated for user $eris_userid.\n"; 
+            };
+        };
+     }else{
+        print "No email reminders scheduled for this user.\n"; 
+     };
+};
+$sth->finish();
+print "## Email reminders complete.\n";
+$eris_session->terminate();
+exit;
+
+sub eris_get_date{
+    (my $day, my $month, my $year) = (localtime)[3,4,5];
+    my $current_date = sprintf '%04d-%02d-%02d', $year+1900, $month+1, $day;
+    return $current_date;
+};
+sub eris_date_check{
+    my($date_last_sent, $current_date, $frequency) = @_;
+    $date_last_sent = join('', split(/-/, $date_last_sent));
+    $current_date = join('', split(/-/, $current_date));
+    $frequency = $frequency * 100;
+    if ($current_date >= ($date_last_sent + $frequency)) {
+        return 1;
+    }else{
+        return 0;
+    };
+};
+sub eris_get_fulltext_eprints{
+    my ($eris_session, $eris_userid) = @_;
+    my @no_full_text = ();
+    my $sql = "SELECT * FROM `eprint` WHERE `userid` = $eris_userid AND `full_text_status` = \"none\"";
+    my $sth = $eris_session->get_database->prepare_select($sql);
+    $sth->execute();
+    while (my @eris_eprint = $sth->fetchrow_array) {
+            push @no_full_text, { $eris_eprint[0], $eris_eprint[40] };
+    };
+    $sth->finish();
+    return @no_full_text;
+};
+sub eris_get_stats{
+    my ($eris_session, $eris_userid) = @_;
+    my @eprintidlist = ();
+    my $sql = "SELECT eprintid FROM `eprint` WHERE `userid` = $eris_userid";
+    my $sth = $eris_session->get_database->prepare_select($sql);
+    $sth->execute();
+    while (my @eprintids = $sth->fetchrow_array) {
+        push(@eprintidlist, $eprintids[0]);
+    };
+    my $ids_string = join(",", @eprintidlist);
+    my @stats =();
+    my $sql2 = "SELECT DISTINCT access.referent_id, COUNT(access.referent_id), eprint.title FROM access LEFT JOIN eprint ON access.referent_id = eprint.eprintid WHERE access.service_type_id='?abstract=yes' AND access.referent_id IN (".$ids_string.") GROUP BY access.referent_id ORDER BY COUNT(access.referent_id) DESC";
+    my $sth2 = $eris_session->get_database->prepare_select($sql);
+    $sth2->execute();
+    for(my $i=0; $i < 10; $i++) {
+            my @row = $sth2->fetchrow_array; 
+            if(!@row){last;}
+            push @stats, { $row[0], $row[2], $row[1] };
+    };
+    $sth->finish();
+    return @stats;
+};
+sub eris_send_email{
+    print "Sending mail...\n";
+    my ($eris_email_session, $eris_user_email, $content) = @_;
+    my $subject  = "EPrints Email Reminders";
+    my $send_to  = $eris_user_email;
+
+    my $mailsent = EPrints::Utils::send_mail(
+        session => $eris_email_session,
+        to_email => $eris_user_email,
+        to_name => 'User',
+        subject => $subject,
+        message => $content,
+    );
+    print "Sending mail complete.\n";
+    return $mailsent;
+};
+sub eris_update_date_last_sent{
+    my ($eris_session, $eris_userid, $eris_date_last_sent) = @_;
+    my $sql = "UPDATE `eris`.`user_email_reminders` SET `date_last_sent` = \'$eris_date_last_sent\' WHERE `user_email_reminders`.`userid` = $eris_userid;";
+    my $sth = $eris_session->get_database->prepare_select($sql);
+    $sth->execute();
+    $sth->finish();
+    print "Date last sent updated for user $eris_userid.\n";
+    return 1;
+};

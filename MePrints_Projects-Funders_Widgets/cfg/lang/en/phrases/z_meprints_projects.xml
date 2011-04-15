@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?><!DOCTYPE phrases SYSTEM "entities.dtd">
+  <epp:phrases xmlns="http://www.w3.org/1999/xhtml" xmlns:epp="http://eprints.org/ep3/phrase" xmlns:epc="http://eprints.org/ep3/control">
+    <epp:phrase id="viewname_eprint_projects">Projects</epp:phrase>
+    <epp:phrase id="ordername_eprint_byprojects">by projects</epp:phrase>
+    <epp:phrase id="Plugin/MePrints/Widget/ERIS_Projects:title">Most Active Projects</epp:phrase>
+    <epp:phrase id="Plugin/MePrints/Widget/ERIS_Projects:projecttitle">Project</epp:phrase>
+    <epp:phrase id="Plugin/MePrints/Widget/ERIS_Projects:noitems"><p>No items.</p></epp:phrase>
+  </epp:phrases>

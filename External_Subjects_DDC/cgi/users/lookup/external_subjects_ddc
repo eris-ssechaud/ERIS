@@ -1,0 +1,52 @@
+################################################################################
+#  EPrints External Subjects DDC Lookup Script
+################################################################################
+use EPrints;
+use XML::Twig;
+use LWP::UserAgent;
+use strict;
+use warnings;
+my $session = EPrints::Session->new();
+my $query = lc($session->param("q") || "");
+my $sparql = 'http://dewey.info/sparql.php?query=';
+$sparql = $sparql.'PREFIX+skos%3A%3Chttp%3A%2F%2Fwww.w3.org%2F2004%2F02%2Fskos%2Fcore%23%3E%0D%0A';
+$sparql = $sparql.'PREFIX+rdf%3A%3Chttp%3A%2F%2Fwww.w3.org%2F1999%2F02%2F22-rdf-syntax-ns%23%3E%0D%0A';
+$sparql = $sparql.'PREFIX+owl%3A%3Chttp%3A%2F%2Fwww.w3.org%2F2002%2F07%2Fowl%23%3E%0D%0A';
+$sparql = $sparql.'PREFIX+dcterms%3A%3Chttp%3A%2F%2Fpurl.org%2Fdc%2Fterms%2F%3E%0D%0A';
+$sparql = $sparql.'PREFIX+rdfs%3A%3Chttp%3A%2F%2Fwww.w3.org%2F2000%2F01%2Frdf-schema%23%3E%0D%0A';
+$sparql = $sparql.'SELECT+DISTINCT%0D%0A%3Fsubject+%3Ftitle%0D%0A';
+$sparql = $sparql.'WHERE%0D%0A{%0D%0A%3Fsubject+skos%3AprefLabel+%3Ftitle%0D%0A';
+$sparql = $sparql.'FILTER+%28langMatches%28lang%28%3Ftitle%29%2C%22en%22%29%26%26regex%28%3Ftitle%2C%22^';
+$sparql = $sparql.$query.'%22%2C%22i%22%29%29%0D%0A}%0D%0A';
+$sparql = $sparql.'LIMIT+40&output=xml';
+my $ua = LWP::UserAgent->new;
+$ua->agent('Mozilla/5.0');
+# $ua->proxy(['http','ftp'],'http://your.proxy:port/');
+my $xml = $ua->get($sparql);
+if ($xml->is_success){
+	$xml = $xml->decoded_content;
+}else{
+	die $xml->status_line;
+}
+my $twig = XML::Twig->new(TwigRoots => {literal => 1});
+$twig->parse($xml);
+my $root = $twig->root;
+my @results = $root->children;
+my @res_array = ();
+foreach my $res (@results) {
+	push(@res_array, $res->text);
+};
+my %seen = ();
+@res_array = grep {!$seen{$_}++}@res_array;
+@res_array = sort(@res_array);
+my $sul = "<ul>";
+foreach my $res_array_val (@res_array) {
+	$sul = $sul.'<li>'.$res_array_val.'<ul><li id="for:value:relative:">'.$res_array_val.'</li></ul></li>';
+};
+$sul = $sul.'</ul>';
+$session->send_http_header(content_type => "text/xml; charset=UTF-8");
+print <<END;
+<?xml version="1.0" encoding="UTF-8" ?>
+END
+print $sul;
+$session->terminate;
